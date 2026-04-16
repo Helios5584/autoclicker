@@ -70,7 +70,7 @@ fn main() {
         })
         .collect();
 
-    let hotkey_info = MenuItem::new("Emergency Off: ⌘⇧Esc", false, None);
+    let hotkey_info = MenuItem::new("Toggle: ⌘⇧Esc", false, None);
     let quit_item = MenuItem::new("Quit", true, None);
 
     let menu = Menu::new();
@@ -145,10 +145,15 @@ fn main() {
             }
         }
 
-        // Hotkey: emergency off only
+        // Hotkey: toggle on/off
         while let Ok(_event) = GlobalHotKeyEvent::receiver().try_recv() {
-            active.store(false, Ordering::SeqCst);
-            toggle_item.set_text("Start Clicking");
+            let now_active = !active.load(Ordering::SeqCst);
+            active.store(now_active, Ordering::SeqCst);
+            toggle_item.set_text(if now_active {
+                "Stop Clicking"
+            } else {
+                "Start Clicking"
+            });
         }
     });
 }
