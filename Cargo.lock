@@ -42,7 +42,6 @@ name = "autoclicker"
 version = "0.1.0"
 dependencies = [
  "core-graphics",
- "core-graphics-types",
  "global-hotkey",
  "tao",
  "tray-icon",
