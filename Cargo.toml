@@ -1,0 +1,12 @@
+[package]
+name = "autoclicker"
+version = "0.1.0"
+edition = "2021"
+description = "macOS menu bar autoclicker"
+
+[dependencies]
+tao = "0.30"
+tray-icon = "0.17"
+global-hotkey = "0.6"
+core-graphics = "0.24"
+core-graphics-types = "0.2"
