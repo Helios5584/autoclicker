@@ -1,13 +1,14 @@
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use core_graphics::event::{CGEvent, CGEventTapLocation, CGEventType, CGMouseButton};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use global_hotkey::hotkey::{Code, HotKey, Modifiers};
 use global_hotkey::{GlobalHotKeyEvent, GlobalHotKeyManager};
-use tao::event_loop::{ControlFlow, EventLoop};
+use objc2::runtime::AnyObject;
+use objc2::{class, msg_send};
 use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
 use tray_icon::TrayIconBuilder;
 
@@ -97,7 +98,21 @@ fn clicker_loop(active: Arc<AtomicBool>, interval_ms: Arc<AtomicU64>) {
 }
 
 fn main() {
-    let event_loop = EventLoop::new();
+    // Bring up NSApplication so tray-icon + global-hotkey can dispatch via
+    // AppKit/Carbon run loop sources. LSUIElement in Info.plist keeps app
+    // out of the Dock; no setActivationPolicy needed.
+    let ns_app: *mut AnyObject = unsafe {
+        let app: *mut AnyObject = msg_send![class!(NSApplication), sharedApplication];
+        let _: () = msg_send![app, finishLaunching];
+        app
+    };
+    let run_loop_mode: *mut AnyObject = unsafe {
+        msg_send![
+            class!(NSString),
+            stringWithUTF8String: b"kCFRunLoopDefaultMode\0".as_ptr() as *const i8
+        ]
+    };
+
     let active = Arc::new(AtomicBool::new(false));
     let interval_ms = Arc::new(AtomicU64::new(SPEEDS[DEFAULT_SPEED].1));
 
@@ -148,15 +163,33 @@ fn main() {
         toggle_item.set_text(if now { "Stop Clicking" } else { "Start Clicking" });
     };
 
-    event_loop.run(move |_, _, control_flow| {
-        *control_flow = ControlFlow::WaitUntil(Instant::now() + Duration::from_millis(50));
+    loop {
+        // Pump one NSEvent (block up to 50ms). sendEvent: is what dispatches
+        // clicks to NSStatusItem and keystrokes to Carbon hotkey handlers.
+        unsafe {
+            let date: *mut AnyObject = msg_send![
+                class!(NSDate),
+                dateWithTimeIntervalSinceNow: 0.05f64
+            ];
+            let event: *mut AnyObject = msg_send![
+                ns_app,
+                nextEventMatchingMask: u64::MAX,
+                untilDate: date,
+                inMode: run_loop_mode,
+                dequeue: true
+            ];
+            if !event.is_null() {
+                let _: () = msg_send![ns_app, sendEvent: event];
+            }
+        }
 
+        let mut quit = false;
         while let Ok(ev) = MenuEvent::receiver().try_recv() {
             if ev.id == toggle_id {
                 do_toggle(&active, &toggle_item);
             } else if ev.id == quit_id {
                 active.store(false, Ordering::SeqCst);
-                *control_flow = ControlFlow::ExitWithCode(0);
+                quit = true;
             } else {
                 for (id, ms) in &speed_data {
                     if ev.id == *id {
@@ -174,5 +207,9 @@ fn main() {
                 do_toggle(&active, &toggle_item);
             }
         }
-    });
+
+        if quit {
+            break;
+        }
+    }
 }
