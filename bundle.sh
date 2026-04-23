@@ -22,8 +22,9 @@ mkdir -p "$APP/Contents/Resources"
 cp "$BINARY" "$APP/Contents/MacOS/autoclicker"
 cp Info.plist "$APP/Contents/Info.plist"
 
-# If you have an icon file (icon.icns), uncomment:
-# cp icon.icns "$APP/Contents/Resources/AppIcon.icns"
+if [ -f icon.icns ]; then
+    cp icon.icns "$APP/Contents/Resources/AppIcon.icns"
+fi
 
 echo "Built $APP ($MODE)"
 echo ""

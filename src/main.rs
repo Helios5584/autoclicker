@@ -22,14 +22,45 @@ const SPEEDS: &[(&str, u64)] = &[
 const DEFAULT_SPEED: usize = 2;
 
 fn create_icon() -> tray_icon::Icon {
-    let size = 22u32;
+    // Target reticle: outer ring + 4 crosshair ticks + center dot.
+    // Rendered at 44px for retina; flagged as template so macOS tints it.
+    let size = 44u32;
     let mut rgba = vec![0u8; (size * size * 4) as usize];
-    let c = size as f32 / 2.0;
+    let c = (size as f32 - 1.0) / 2.0;
+
+    let ring_r = 16.0;
+    let ring_w = 3.0;
+    let dot_r = 3.5;
+    let tick_in = 17.5;
+    let tick_out = 21.0;
+    let tick_hw = 1.5;
+
+    let aa = |sd: f32| -> f32 { (0.5 - sd).clamp(0.0, 1.0) };
+
     for y in 0..size {
         for x in 0..size {
-            let d = ((x as f32 - c).powi(2) + (y as f32 - c).powi(2)).sqrt();
-            if (d <= 9.0 && d >= 7.5) || d <= 2.5 {
-                rgba[((y * size + x) * 4 + 3) as usize] = 255;
+            let dx = x as f32 - c;
+            let dy = y as f32 - c;
+            let d = (dx * dx + dy * dy).sqrt();
+
+            let mut cov: f32 = 0.0;
+            cov = cov.max(aa((d - ring_r).abs() - ring_w / 2.0));
+            cov = cov.max(aa(d - dot_r));
+
+            let tick_mid = (tick_in + tick_out) / 2.0;
+            let tick_half = (tick_out - tick_in) / 2.0;
+            let h = ((dx.abs() - tick_mid).abs() - tick_half).max(dy.abs() - tick_hw);
+            let v = ((dy.abs() - tick_mid).abs() - tick_half).max(dx.abs() - tick_hw);
+            cov = cov.max(aa(h));
+            cov = cov.max(aa(v));
+
+            let a = (cov * 255.0).round() as u8;
+            if a > 0 {
+                let idx = ((y * size + x) * 4) as usize;
+                rgba[idx] = 255;
+                rgba[idx + 1] = 255;
+                rgba[idx + 2] = 255;
+                rgba[idx + 3] = a;
             }
         }
     }
@@ -92,6 +123,7 @@ fn main() {
     let _tray = TrayIconBuilder::new()
         .with_menu(Box::new(menu))
         .with_icon(create_icon())
+        .with_icon_as_template(true)
         .with_tooltip("AutoClicker")
         .build()
         .expect("tray icon");
