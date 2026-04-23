@@ -17,7 +17,7 @@ Lightweight macOS autoclicker. Runs as menu bar app. Rust + `core-graphics`.
 - Accessibility permission — macOS prompts on first run. Grant under **System Settings → Privacy & Security → Accessibility**.
 
 ## Build
-
+NOTE: No need to build. .app file already present.
 ```bash
 ./bundle.sh           # release build, produces AutoClicker.app
 ./bundle.sh debug     # debug build
