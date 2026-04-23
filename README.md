@@ -44,12 +44,26 @@ mv AutoClicker.app /Applications/
 
 Clicks fire at wherever the cursor is when toggled on.
 
+## Sharing the app with others
+
+The app is ad-hoc signed but not notarized by Apple. When downloaded from the internet, AirDropped, or otherwise transferred between machines, macOS marks it with a quarantine flag and shows:
+
+> "AutoClicker" is damaged and can't be opened. You should move it to the Trash.
+
+This is Gatekeeper, not actual corruption. The recipient must strip the quarantine attribute once:
+
+```bash
+xattr -dr com.apple.quarantine /path/to/AutoClicker.app
+```
+
+Then launch normally. Grant Accessibility permission on first run.
+
 ## Project layout
 
 | File | Purpose |
 |------|---------|
 | `src/main.rs` | Tray, hotkey, click loop |
-| `Cargo.toml` | Deps: `tao`, `tray-icon`, `global-hotkey`, `core-graphics` |
+| `Cargo.toml` | Deps: `tray-icon`, `global-hotkey`, `core-graphics`, `objc2` |
 | `Info.plist` | Bundle metadata, `LSUIElement` hides dock icon |
 | `bundle.sh` | Wraps compiled binary into `.app` |
 

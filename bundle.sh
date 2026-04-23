@@ -26,6 +26,10 @@ if [ -f icon.icns ]; then
     cp icon.icns "$APP/Contents/Resources/AppIcon.icns"
 fi
 
+# Ad-hoc codesign. Required on Apple Silicon for unsigned binaries to run at all.
+# Does NOT bypass Gatekeeper on other machines — users must still strip quarantine.
+codesign --force --deep --sign - "$APP"
+
 echo "Built $APP ($MODE)"
 echo ""
 echo "To run:  open $APP"
@@ -34,3 +38,7 @@ echo ""
 echo "NOTE: On first run, macOS will ask for Accessibility permissions."
 echo "      Go to System Settings > Privacy & Security > Accessibility"
 echo "      and grant access to AutoClicker."
+echo ""
+echo "If sharing the app with others, they will see \"app is damaged\" on first launch."
+echo "They must strip the quarantine flag after downloading:"
+echo "      xattr -dr com.apple.quarantine /path/to/AutoClicker.app"
